@@ -27,6 +27,7 @@ namespace ts {
         readonly failedLookupLocations: ReadonlyArray<string>;
         isInvalidated?: boolean;
         refCount?: number;
+        watchAdded?: boolean;
     }
 
     interface ResolutionWithResolvedFileName {
@@ -196,22 +197,23 @@ namespace ts {
         }
 
         function clearPerDirectoryResolutions() {
+            watchFailedLookupLocationOfResolutionCache(perDirectoryResolvedModuleNames);
             perDirectoryResolvedModuleNames.clear();
             nonRelaticeModuleNameCache.clear();
+            watchFailedLookupLocationOfResolutionCache(perDirectoryResolvedTypeReferenceDirectives);
             perDirectoryResolvedTypeReferenceDirectives.clear();
         }
 
         function finishCachingPerDirectoryResolution() {
             allFilesHaveInvalidatedResolution = false;
             filesWithInvalidatedNonRelativeUnresolvedImports = undefined;
+            clearPerDirectoryResolutions();
             directoryWatchesOfFailedLookups.forEach((watcher, path) => {
                 if (watcher.refCount === 0) {
                     directoryWatchesOfFailedLookups.delete(path);
                     watcher.watcher.close();
                 }
             });
-
-            clearPerDirectoryResolutions();
         }
 
         function resolveModuleName(moduleName: string, containingFile: string, compilerOptions: CompilerOptions, host: ModuleResolutionHost): CachedResolvedModuleWithFailedLookupLocations {
@@ -275,7 +277,7 @@ namespace ts {
                         perDirectoryResolution.set(name, resolution);
                     }
                     resolutionsInFile.set(name, resolution);
-                    watchFailedLookupLocationOfResolution(resolution, getResolutionWithResolvedFileName);
+                    addRefCountToWatchResolution(resolution, getResolutionWithResolvedFileName);
                     if (existingResolution) {
                         stopWatchFailedLookupLocationOfResolution(existingResolution);
                     }
@@ -459,18 +461,26 @@ namespace ts {
                 !resolutionHost.getCompilationSettings().allowNonTsExtensions;
         }
 
-        function watchFailedLookupLocationOfResolution<T extends ResolutionWithFailedLookupLocations, R extends ResolutionWithResolvedFileName>(resolution: T, getResolutionWithResolvedFileName: GetResolutionWithResolvedFileName<T, R>) {
+        function addRefCountToWatchResolution<T extends ResolutionWithFailedLookupLocations, R extends ResolutionWithResolvedFileName>(resolution: T, getResolutionWithResolvedFileName: GetResolutionWithResolvedFileName<T, R>) {
             // No need to set the resolution refCount
-            if (!canWatchResolution(resolution, getResolutionWithResolvedFileName)) {
+            if (canWatchResolution(resolution, getResolutionWithResolvedFileName)) {
+                resolution.refCount = (resolution.refCount || 0) + 1;
+            }
+        }
+
+        function watchFailedLookupLocationOfResolution(resolution: ResolutionWithFailedLookupLocations, name: string) {
+            Debug.assert(!resolution.watchAdded);
+            resolution.watchAdded = true;
+            if (!resolution.refCount) {
                 return;
             }
 
-            if (resolution.refCount !== undefined) {
-                resolution.refCount++;
+            if (resolutionHost.getCurrentProgram().getTypeChecker().tryFindAmbientModuleWithoutAugmentations(name)) {
+                // Do not watch ambient module resolutions
+                resolution.refCount = undefined;
                 return;
             }
 
-            resolution.refCount = 1;
             const { failedLookupLocations } = resolution;
             let setAtRoot = false;
             for (const failedLookupLocation of failedLookupLocations) {
@@ -496,6 +506,10 @@ namespace ts {
                 // This is always recursive
                 setDirectoryWatcher(rootDir!, rootPath); // TODO: GH#18217
             }
+        }
+
+        function watchFailedLookupLocationOfResolutionCache<T extends ResolutionWithFailedLookupLocations>(perDirectoryCache: Map<Map<T>>) {
+            perDirectoryCache.forEach(resolutions => resolutions.forEach(watchFailedLookupLocationOfResolution));
         }
 
         function setDirectoryWatcher(dir: string, dirPath: Path, nonRecursive?: boolean) {
