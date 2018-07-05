@@ -275,7 +275,7 @@ namespace ts {
                         perDirectoryResolution.set(name, resolution);
                     }
                     resolutionsInFile.set(name, resolution);
-                    watchFailedLookupLocationOfResolution(resolution);
+                    watchFailedLookupLocationOfResolution(resolution, getResolutionWithResolvedFileName);
                     if (existingResolution) {
                         stopWatchFailedLookupLocationOfResolution(existingResolution);
                     }
@@ -441,9 +441,27 @@ namespace ts {
             return fileExtensionIsOneOf(path, failedLookupDefaultExtensions);
         }
 
-        function watchFailedLookupLocationOfResolution(resolution: ResolutionWithFailedLookupLocations) {
+        function canWatchResolution<T extends ResolutionWithFailedLookupLocations, R extends ResolutionWithResolvedFileName>(resolution: T, getResolutionWithResolvedFileName: GetResolutionWithResolvedFileName<T, R>) {
             // No need to set the resolution refCount
             if (!resolution.failedLookupLocations || !resolution.failedLookupLocations.length) {
+                return false;
+            }
+
+            const resolved = getResolutionWithResolvedFileName(resolution);
+            if (!resolved || !resolved.resolvedFileName) {
+                return true;
+            }
+
+            // Assume resolutions as non changing if file resolved is ts or json
+            // Or allowjs /allownon ts extensions is true
+            return !resolutionExtensionIsTypeScriptOrJson(extensionFromPath(resolved.resolvedFileName)) &&
+                !resolutionHost.getCompilationSettings().allowJs &&
+                !resolutionHost.getCompilationSettings().allowNonTsExtensions;
+        }
+
+        function watchFailedLookupLocationOfResolution<T extends ResolutionWithFailedLookupLocations, R extends ResolutionWithResolvedFileName>(resolution: T, getResolutionWithResolvedFileName: GetResolutionWithResolvedFileName<T, R>) {
+            // No need to set the resolution refCount
+            if (!canWatchResolution(resolution, getResolutionWithResolvedFileName)) {
                 return;
             }
 
@@ -492,7 +510,7 @@ namespace ts {
         }
 
         function stopWatchFailedLookupLocationOfResolution(resolution: ResolutionWithFailedLookupLocations) {
-            if (!resolution.failedLookupLocations || !resolution.failedLookupLocations.length) {
+            if (resolution.refCount === undefined) {
                 return;
             }
 
