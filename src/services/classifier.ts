@@ -377,6 +377,7 @@ namespace ts {
             case SyntaxKind.BarToken:
             case SyntaxKind.AmpersandAmpersandToken:
             case SyntaxKind.BarBarToken:
+            case SyntaxKind.QuestionQuestionToken:
             case SyntaxKind.BarEqualsToken:
             case SyntaxKind.AmpersandEqualsToken:
             case SyntaxKind.CaretEqualsToken:

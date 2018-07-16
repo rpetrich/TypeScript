@@ -179,6 +179,7 @@ namespace ts {
         AmpersandAmpersandToken,
         BarBarToken,
         QuestionToken,
+        QuestionQuestionToken,
         ColonToken,
         AtToken,
         // Assignments
@@ -1488,6 +1489,7 @@ namespace ts {
     export type LogicalOperator
         = SyntaxKind.AmpersandAmpersandToken
         | SyntaxKind.BarBarToken
+        | SyntaxKind.QuestionQuestionToken
         ;
 
     // see: https://tc39.github.io/ecma262/#prod-LogicalANDExpression

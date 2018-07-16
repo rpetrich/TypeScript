@@ -282,6 +282,23 @@ namespace ts {
                     visitNode(node.right, noDestructuringValue ? visitorNoDestructuringValue : visitor, isExpression)
                 );
             }
+            else if (node.operatorToken.kind === SyntaxKind.QuestionQuestionToken) {
+                let targetIdentifier: Identifier;
+                let comparisonTarget;
+                if (node.left.kind === SyntaxKind.Identifier) {
+                    targetIdentifier = node.left as Identifier;
+                    comparisonTarget = targetIdentifier;
+                } else {
+                    targetIdentifier = createTempVariable(undefined);
+                    hoistVariableDeclaration(targetIdentifier);
+                    comparisonTarget = createAssignment(targetIdentifier, visitNode(node.left, visitorNoDestructuringValue, isExpression));
+                }
+                return createConditional(
+                    createBinary(comparisonTarget, SyntaxKind.ExclamationEqualsToken, createNull()),
+                    getSynthesizedClone(targetIdentifier),
+                    visitNode(node.right, visitorNoDestructuringValue, isExpression)
+                );
+            }
             return visitEachChild(node, visitor, context);
         }
 

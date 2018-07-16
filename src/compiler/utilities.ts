@@ -1755,7 +1755,7 @@ namespace ts {
             name = node.parent.left;
             decl = name;
         }
-        else if (isBinaryExpression(node.parent) && node.parent.operatorToken.kind === SyntaxKind.BarBarToken) {
+        else if (isBinaryExpression(node.parent) && node.parent.operatorToken.kind !== SyntaxKind.AmpersandAmpersandToken) {
             if (isVariableDeclaration(node.parent.parent) && node.parent.parent.initializer === node.parent) {
                 name = node.parent.parent.name;
                 decl = node.parent.parent;
@@ -1783,7 +1783,7 @@ namespace ts {
     /** Get the initializer, taking into account defaulted Javascript initializers */
     export function getEffectiveInitializer(node: HasExpressionInitializer) {
         if (isInJSFile(node) && node.initializer &&
-            isBinaryExpression(node.initializer) && node.initializer.operatorToken.kind === SyntaxKind.BarBarToken &&
+            isBinaryExpression(node.initializer) && node.initializer.operatorToken.kind !== SyntaxKind.AmpersandAmpersandToken &&
             node.name && isEntityNameExpression(node.name) && isSameEntityName(node.name, node.initializer.left)) {
             return node.initializer.right;
         }
@@ -1852,7 +1852,7 @@ namespace ts {
      * 'window.', 'global.' or 'self.' The second Lhs is otherwise ignored by the binder and checker.
      */
     function getDefaultedExpandoInitializer(name: EntityNameExpression, initializer: Expression, isPrototypeAssignment: boolean) {
-        const e = isBinaryExpression(initializer) && initializer.operatorToken.kind === SyntaxKind.BarBarToken && getExpandoInitializer(initializer.right, isPrototypeAssignment);
+        const e = isBinaryExpression(initializer) && initializer.operatorToken.kind !== SyntaxKind.AmpersandAmpersandToken && getExpandoInitializer(initializer.right, isPrototypeAssignment);
         if (e && isSameEntityName(name, (initializer as BinaryExpression).left as EntityNameExpression)) {
             return e;
         }
@@ -1868,7 +1868,7 @@ namespace ts {
     /** Given an expando initializer, return its declaration name, or the left-hand side of the assignment if it's part of an assignment declaration. */
     export function getNameOfExpando(node: Declaration): DeclarationName | undefined {
         if (isBinaryExpression(node.parent)) {
-            const parent = (node.parent.operatorToken.kind === SyntaxKind.BarBarToken && isBinaryExpression(node.parent.parent)) ? node.parent.parent : node.parent;
+            const parent = (node.parent.operatorToken.kind !== SyntaxKind.AmpersandAmpersandToken && isBinaryExpression(node.parent.parent)) ? node.parent.parent : node.parent;
             if (parent.operatorToken.kind === SyntaxKind.EqualsToken && isIdentifier(parent.left)) {
                 return parent.left;
             }
@@ -2116,7 +2116,7 @@ namespace ts {
             isBinaryExpression(node.expression) &&
             getAssignmentDeclarationKind(node.expression) !== AssignmentDeclarationKind.None &&
             isBinaryExpression(node.expression.right) &&
-            node.expression.right.operatorToken.kind === SyntaxKind.BarBarToken
+            node.expression.right.operatorToken.kind !== SyntaxKind.AmpersandAmpersandToken
             ? node.expression.right.right
             : undefined;
     }
@@ -2935,6 +2935,7 @@ namespace ts {
     export function getBinaryOperatorPrecedence(kind: SyntaxKind): number {
         switch (kind) {
             case SyntaxKind.BarBarToken:
+            case SyntaxKind.QuestionQuestionToken:
                 return 5;
             case SyntaxKind.AmpersandAmpersandToken:
                 return 6;
@@ -3835,6 +3836,7 @@ namespace ts {
     export function isLogicalOperator(token: SyntaxKind): boolean {
         return token === SyntaxKind.BarBarToken
             || token === SyntaxKind.AmpersandAmpersandToken
+            || token === SyntaxKind.QuestionQuestionToken
             || token === SyntaxKind.ExclamationToken;
     }
 

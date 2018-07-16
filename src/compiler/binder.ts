@@ -911,7 +911,8 @@ namespace ts {
                 else {
                     return node.kind === SyntaxKind.BinaryExpression && (
                         (<BinaryExpression>node).operatorToken.kind === SyntaxKind.AmpersandAmpersandToken ||
-                        (<BinaryExpression>node).operatorToken.kind === SyntaxKind.BarBarToken);
+                        (<BinaryExpression>node).operatorToken.kind === SyntaxKind.BarBarToken ||
+                        (<BinaryExpression>node).operatorToken.kind === SyntaxKind.QuestionQuestionToken);
                 }
             }
         }
@@ -1312,7 +1313,7 @@ namespace ts {
 
         function bindBinaryExpressionFlow(node: BinaryExpression) {
             const operator = node.operatorToken.kind;
-            if (operator === SyntaxKind.AmpersandAmpersandToken || operator === SyntaxKind.BarBarToken) {
+            if (operator === SyntaxKind.AmpersandAmpersandToken || operator === SyntaxKind.BarBarToken || operator === SyntaxKind.QuestionQuestionToken) {
                 if (isTopLevelLogicalExpression(node)) {
                     const postExpressionLabel = createBranchLabel();
                     bindLogicalExpression(node, postExpressionLabel, postExpressionLabel);
@@ -3884,6 +3885,10 @@ namespace ts {
             case SyntaxKind.ContinueStatement:
             case SyntaxKind.BreakStatement:
                 transformFlags |= TransformFlags.ContainsHoistedDeclarationOrCompletion;
+                break;
+
+            case SyntaxKind.QuestionQuestionToken:
+                transformFlags |= TransformFlags.AssertESNext;
                 break;
         }
 
