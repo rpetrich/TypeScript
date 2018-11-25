@@ -288,8 +288,9 @@ namespace ts {
                 if (node.left.kind === SyntaxKind.Identifier) {
                     targetIdentifier = node.left as Identifier;
                     comparisonTarget = targetIdentifier;
-                } else {
-                    targetIdentifier = createTempVariable(undefined);
+                }
+                else {
+                    targetIdentifier = createTempVariable(/*recordTempVariable*/ undefined);
                     hoistVariableDeclaration(targetIdentifier);
                     comparisonTarget = createAssignment(targetIdentifier, visitNode(node.left, visitorNoDestructuringValue, isExpression));
                 }
